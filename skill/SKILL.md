@@ -1,29 +1,140 @@
 ---
 name: insane-search-hermes
-description: Adaptive blocked-site retrieval workflow for Hermes. Use when web_search/web_extract fail, pages return 403/429/WAF/login shells, or when retrieving content from X, Reddit, YouTube, Naver, LinkedIn, Coupang, Medium, Substack, or other heavily scripted sites. Prefers Hermes web tools first, then terminal HTTP probes, public endpoints, TLS impersonation with curl_cffi, and finally browser/CDP escalation.
-version: 1.0.0
+description: >
+  Auto-bypass for blocked websites in Hermes — tries every method until one works.
+  Use when web_extract/web_search fail, when pages return 403/429/blocked/login shells,
+  or when accessing X/Twitter, Reddit, YouTube, GitHub, Mastodon, Medium, Substack,
+  Stack Overflow, Threads, Naver, Coupang, LinkedIn, or other WAF/bot-protected sites.
+  Leverages yt-dlp (1,858 media sites), Jina Reader, public APIs (HN, Bluesky, arXiv),
+  RSS/Atom, curl_cffi TLS impersonation with auto-install guidance, and Hermes browser/CDP fallback.
+  Korean triggers: 트위터/X 못 열어, 레딧 안 읽혀, 유튜브 자막 뽑아줘, 깃헙 검색,
+  사이트 차단됨, 스레드 안 열려, 마스토돈, 미디엄, 서브스택, 스택오버플로우,
+  네이버 블로그, 디시인사이드, 에펨코리아, 요즘IT, 긱뉴스, 클리앙, 쿠팡, 링크드인,
+  당근마켓. English triggers: twitter access, reddit blocked, youtube subtitles,
+  github search, arxiv papers, threads, mastodon, medium, substack, stackoverflow,
+  naver blog, dcinside, fmkorea, coupang, linkedin, yozm, wishket.
+  Do NOT trigger for simple web searches that web_search can handle directly.
+version: 1.1.0
 metadata:
   hermes:
-    tags: [research, web, scraping, blocked-sites, jina, curl_cffi, browser, naver]
+    tags: [research, web, scraping, blocked-sites, jina, curl_cffi, browser, naver, reddit, twitter, rss]
     homepage: https://github.com/fivetaku/insane-search
     source_adaptation: Adapted for Hermes Agent from fivetaku/insane-search
 ---
 
 # Insane Search for Hermes
 
-웹 접근이 막히거나 기본 웹 도구가 빈약한 결과를 줄 때 쓰는 Hermes용 검색/추출 스킬입니다.
+> URL 접근이 차단될 때, 플랫폼별 최적 방법을 Hermes 도구 체계로 공격적으로 안내한다.
 
-원본 아이디어는 fivetaku/insane-search이고, 여기서는 Claude 전용 흐름을 Hermes 도구 기준으로 다시 정리했습니다.
+원본 `fivetaku/insane-search`의 의도와 커버리지를 최대한 유지하되,
+Claude Code 전용 표기를 Hermes의 `web_search`, `web_extract`, `terminal`, `browser_*`, `browser_cdp` 기준으로 치환했다.
 
-## 언제 쓰나
-- `web_extract`가 실패하거나 빈 요약만 반환할 때
-- `web_search`/`web_extract`만으로 최신 콘텐츠를 못 찾을 때
-- 403, 429, Cloudflare, Akamai, DataDome, CAPTCHA, JS shell, login wall에 걸릴 때
-- X, Reddit, YouTube, Medium, Substack, LinkedIn, Naver, Coupang, 한국 커뮤니티처럼 일반 추출이 자주 깨지는 사이트를 다룰 때
-- URL 직접 접근뿐 아니라 키워드 검색 후 본문 추출까지 이어져야 할 때
+## 의도 분류 (Phase 0 진입 전)
+
+| 사용자 입력 | 경로 |
+|------------|------|
+| URL 제공 (`https://...`) | → Phase 0~3 직접 접근 |
+| 핸들 제공 (`@username`) | → Phase 0 syndication/API |
+| 키워드만 (`X에서 AI 검색`) | → `web_search(site:{domain} {keyword})` 또는 네이버/RSS 검색 → URL 확보 후 Phase 0~3 |
+
+> 한국어 신규 콘텐츠는 일반 웹검색 인덱싱이 느릴 수 있다. URL을 직접 받으면 가장 강하고, 키워드만 있으면 네이버 검색/RSS를 적극 고려한다.
+
+## 원칙
+
+1. 어떤 방법도 미리 제외하지 않는다.
+2. 의존성이 없으면 설치하고 계속 간다.
+3. 실패 신호 기반으로 더 강한 단계로 즉시 올린다.
+4. HTML을 얻으면 OGP/JSON-LD/구조화 데이터도 같이 본다.
+5. 원본 성공본이 있으면 캐시/아카이브는 참고만 쓴다.
+6. login/paywall은 우회 성공처럼 말하지 않는다.
+
+## Phase 0 — 특수 엔드포인트 인덱스
+
+범용 체인으로 자동 발견하기 어려운 전용 API/CLI만 둔다.
+없는 사이트는 Phase 1부터 자동 시도한다.
+
+### 소셜/커뮤니티 전용 API
+
+| 플랫폼 | 방법 | 상세 |
+|--------|------|------|
+| X/Twitter | syndication + oEmbed + 키워드 검색은 검색→oEmbed | [twitter.md](references/twitter.md) |
+| Reddit | URL + `.json` + Mobile UA | [json-api.md](references/json-api.md) |
+| Bluesky | AT Protocol | [public-api.md](references/public-api.md) |
+| Mastodon | 인스턴스별 공개 API | [public-api.md](references/public-api.md) |
+| Hacker News | Firebase API + Algolia Search | [json-api.md](references/json-api.md) |
+| Stack Overflow | Stack Exchange API v2.3 | [public-api.md](references/public-api.md) |
+| Lobste.rs / V2EX / dev.to | 공개 JSON API | [json-api.md](references/json-api.md) |
+
+### 미디어
+
+| 플랫폼 | 방법 | 상세 |
+|--------|------|------|
+| YouTube/Vimeo/Twitch/TikTok/SoundCloud 등 | `yt-dlp --dump-json` | [media.md](references/media.md) |
+
+### 학술/레지스트리
+
+| 플랫폼 | 방법 | 상세 |
+|--------|------|------|
+| arXiv | Atom API | [public-api.md](references/public-api.md) |
+| CrossRef | REST API | [public-api.md](references/public-api.md) |
+| Wikipedia | REST API | [json-api.md](references/json-api.md) |
+| OpenLibrary | JSON API | [public-api.md](references/public-api.md) |
+| GitHub | REST API / gh CLI | [public-api.md](references/public-api.md) |
+| npm / PyPI | Registry API | [json-api.md](references/json-api.md) |
+| Wayback Machine | CDX API | [public-api.md](references/public-api.md) |
+
+### 한국 전용
+
+| 플랫폼 | 방법 | 상세 |
+|--------|------|------|
+| 네이버 검색 | curl_cffi 신원위장 + `search.naver.com` | [naver.md](references/naver.md) |
+| 네이버 금융 시세 | `api.finance.naver.com/siseJson.naver` | [naver.md](references/naver.md) |
+| 한국 언론/블로그 | RSS/Atom, Jina, 모바일 URL | [rss.md](references/rss.md), [naver.md](references/naver.md) |
+
+## 접근 순서 — 적응형 스케줄러
+
+```
+Phase 0: 특수 엔드포인트 — 있으면 먼저 시도
+  ↓ 실패 또는 인덱스에 없음
+Phase 1: 경량 프로브 — web_extract + Jina + curl UA/URL 변형
+  ↓ 403/WAF/챌린지/빈 SPA 감지
+Phase 2: TLS 임퍼소네이션 — curl_cffi (설치 후 safari→chrome→firefox)
+  ↓ TLS 우회도 실패 또는 JS 챌린지
+Phase 3: Hermes browser/CDP — 실제 브라우저 + 숨은 API 탐색
+  ↓ login/paywall 감지
+종료: 인증 필요 / 지역 차단 / CAPTCHA 수동개입 필요
+
+사이드카: 캐시/아카이브 (원본이 실패할 때만 채택)
+```
+
+상세:
+- [fallback.md](references/fallback.md)
+- [terminal-http.md](references/terminal-http.md)
+- [browser-escalation.md](references/browser-escalation.md)
+
+## 빠른 참조
+
+```bash
+# Jina Reader
+curl -s "https://r.jina.ai/https://example.com"
+
+# 미디어 메타데이터
+yt-dlp --dump-json "URL"
+
+# Reddit
+curl -sL -H "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15" "https://www.reddit.com/r/{sub}/hot.json?limit=10"
+
+# X/Twitter timeline
+curl -sL "https://syndication.twitter.com/srv/timeline-profile/screen-name/{handle}"
+
+# Hacker News
+curl -sL "https://hacker-news.firebaseio.com/v0/topstories.json?limitToFirst=10&orderBy=%22%24key%22"
+
+# YouTube subtitles
+yt-dlp --write-sub --write-auto-sub --sub-lang "en,ko" --skip-download -o "/tmp/%(id)s" "URL"
+```
 
 ## 트리거 문구
-다음 표현이 들어오면 이 스킬을 우선 고려한다.
 
 ### 한국어
 - 사이트 차단됨
@@ -36,7 +147,8 @@ metadata:
 - 네이버 블로그 읽어줘
 - 쿠팡 상품 정보 긁어와줘
 - 링크드인 글 내용 보여줘
-- 한국 뉴스 최신 글 찾아줘
+- 스레드 안 열려
+- 디시인사이드 / 에펨코리아 / 요즘IT / 긱뉴스 / 클리앙 긁어줘
 
 ### English
 - blocked site
@@ -49,57 +161,17 @@ metadata:
 - scrape coupang
 - read linkedin article
 - summarize medium post
+- naver blog blocked
+- read threads post
 
-## 핵심 원칙
-1. 쉬운 방법을 먼저 쓴다.
-2. 사이트를 미리 포기하지 않는다.
-3. 실패 신호가 보이면 더 강한 방법으로 바로 올린다.
-4. HTML을 얻으면 항상 메타데이터도 같이 확인한다.
-5. 로그인/유료벽이면 우회 가능 여부를 솔직하게 구분한다.
-
-## 기본 라우팅
-- URL이 이미 있으면: Phase 0~3 직접 접근
-- 핸들만 있으면: 플랫폼 전용 공개 엔드포인트 우선
-- 키워드만 있으면: `web_search` 또는 로컬/터미널 검색으로 URL 확보 후 접근
-- 한국어 최신 콘텐츠면: 일반 검색보다 네이버 검색/RSS를 우선 고려
-
-## Phase 개요
-- Phase 0: 특수 엔드포인트 / 공개 API / RSS / yt-dlp
-- Phase 1: Hermes 웹 도구 + Jina + curl UA/URL 변형
-- Phase 2: `curl_cffi` TLS 임퍼소네이션 + 신원 위장
-- Phase 3: Hermes browser/CDP로 실제 브라우저 렌더링 및 숨은 API 탐색
-
-## 빠른 선택표
-- 기사/블로그: `web_extract` → Jina → curl HTML + JSON-LD → browser
-- SNS/X/Reddit: 공개 엔드포인트나 JSON API 우선
-- 영상/오디오: `yt-dlp --dump-json` 또는 자막 추출
-- 한국 뉴스/블로그: 네이버 검색, 모바일 URL, RSS, Jina 우선
-- 쇼핑/프로필/SPA: JSON-LD와 browser 네트워크 관찰 우선
-
-## 반드시 확인할 실패 신호
-- 403 / 430 / 429 / 503
-- `cf-ray`, `__cf_bm`, `_abck`, `datadome`
-- `captcha`, `verify you are human`, `enable javascript`
-- 본문 없이 앱 셸만 있는 SPA
-- `sign in`, `login`, `구독`, `member-only`
-
-## 실행 순서
-1. `web_extract` 또는 `web_search`로 먼저 확인한다.
-2. 실패하면 [special-endpoints.md](references/special-endpoints.md)에서 플랫폼별 우선 경로를 본다.
-3. 그래도 안 되면 [fallback.md](references/fallback.md) 순서대로 올린다.
-4. HTML을 얻는 모든 단계에서 [metadata.md](references/metadata.md)도 같이 적용한다.
-5. 한국 사이트면 [korea.md](references/korea.md)를 먼저 참고한다.
-6. 미디어면 [media.md](references/media.md)로 바로 간다.
-7. JS/WAF면 [browser-escalation.md](references/browser-escalation.md)로 올린다.
-
-## Hermes 맞춤 포인트
-- `web_extract` / `web_search`가 되면 가장 먼저 쓴다.
-- 웹 도구가 막히면 `terminal`로 `curl`, `python3`, `yt-dlp`를 사용한다.
-- 브라우저가 필요하면 `browser_navigate`, `browser_snapshot`, `browser_console`을 우선 사용한다.
-- CDP가 연결돼 있으면 `browser_cdp`로 탭/쿠키/런타임 평가를 보강한다.
-- 이 환경처럼 로컬 SearxNG나 Chrome CDP가 있으면 보조 경로로 활용 가능하다.
-
-## 출력 규칙
-- 어떤 경로로 얻었는지 명시한다: 공식 API / 본문 추출 / 메타데이터 / 아카이브 / 브라우저 렌더링
-- 부분 성공이면 본문인지 메타데이터만인지 구분한다.
-- 인증 필요/지역 차단은 우회 성공처럼 말하지 않는다.
+## 핵심 레퍼런스
+- [fallback.md](references/fallback.md)
+- [json-api.md](references/json-api.md)
+- [public-api.md](references/public-api.md)
+- [twitter.md](references/twitter.md)
+- [naver.md](references/naver.md)
+- [rss.md](references/rss.md)
+- [media.md](references/media.md)
+- [metadata.md](references/metadata.md)
+- [browser-escalation.md](references/browser-escalation.md)
+- [terminal-http.md](references/terminal-http.md)
