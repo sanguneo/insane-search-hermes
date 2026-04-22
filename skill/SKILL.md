@@ -14,7 +14,7 @@ description: >
   github search, arxiv papers, threads, mastodon, medium, substack, stackoverflow,
   naver blog, dcinside, fmkorea, coupang, linkedin, yozm, wishket.
   Do NOT trigger for simple web searches that web_search can handle directly.
-version: 1.2.0
+version: 1.3.0
 metadata:
   hermes:
     tags: [research, web, scraping, blocked-sites, jina, curl_cffi, browser, naver, reddit, twitter, rss]
@@ -186,7 +186,20 @@ yt-dlp --write-sub --write-auto-sub --sub-lang "en,ko" --skip-download -o "/tmp/
 - `scripts/naver_search.py` — 네이버 검색 결과 HTML 확보
 - `scripts/twitter_oembed.py` — X 개별 포스트 oEmbed 추출
 - `scripts/rss_discover.py` — RSS/Atom 후보 자동 탐색 및 파싱
+- `scripts/jina_fetch.py` — Jina Reader 본문 추출
+- `scripts/reddit_json.py` — Reddit JSON 접근
+- `scripts/hn_fetch.py` — Hacker News top/search
+- `scripts/wayback_lookup.py` — Wayback snapshot 탐색
+- `scripts/bluesky_fetch.py` — Bluesky profile/feed 접근
+- `scripts/insane_router.py` — 입력 유형별 1차 실행 계획 제안
 
 ## 명령 템플릿
 
 바로 복붙해서 쓸 템플릿은 [command-templates.md](references/command-templates.md)를 본다.
+
+
+## Router 설계
+
+`insane_router.py`는 원본의 자동 오케스트레이션을 완전히 대체하지는 않지만,
+입력(URL/핸들/키워드)을 분류하고 어떤 스크립트/경로를 먼저 시도할지 즉시 제안한다.
+다음 단계에서는 이 라우터가 실제 실패 신호를 읽고 자동으로 다음 스크립트를 실행하도록 확장할 수 있다.

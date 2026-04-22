@@ -43,12 +43,39 @@ yt-dlp --dump-json 'https://www.youtube.com/watch?v=VIDEO_ID'
 ## 7) Jina Reader
 
 ```bash
-curl -s 'https://r.jina.ai/https://example.com/article'
+python3 scripts/jina_fetch.py 'https://example.com/article'
 ```
 
 ## 8) Reddit JSON
 
 ```bash
-UA='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15'
-curl -sL -H "User-Agent: $UA" 'https://www.reddit.com/r/LocalLLaMA/hot.json?limit=10'
+python3 scripts/reddit_json.py 'https://www.reddit.com/r/LocalLLaMA/comments/abc123/example/'
+```
+
+## 9) Hacker News top/search
+
+```bash
+python3 scripts/hn_fetch.py --limit 10
+python3 scripts/hn_fetch.py --query 'claude code'
+```
+
+## 10) Wayback lookup
+
+```bash
+python3 scripts/wayback_lookup.py 'https://example.com/article'
+```
+
+## 11) Bluesky profile/feed
+
+```bash
+python3 scripts/bluesky_fetch.py 'bsky.app'
+python3 scripts/bluesky_fetch.py 'bsky.app' --feed --limit 5
+```
+
+## 12) Router
+
+```bash
+python3 scripts/insane_router.py 'https://example.com/article'
+python3 scripts/insane_router.py '@openclaw'
+python3 scripts/insane_router.py '클로드 코드 뉴스'
 ```

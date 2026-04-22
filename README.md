@@ -20,6 +20,12 @@ Runnable helper scripts are also included.
 - `skill/scripts/naver_search.py`
 - `skill/scripts/twitter_oembed.py`
 - `skill/scripts/rss_discover.py`
+- `skill/scripts/jina_fetch.py`
+- `skill/scripts/reddit_json.py`
+- `skill/scripts/hn_fetch.py`
+- `skill/scripts/wayback_lookup.py`
+- `skill/scripts/bluesky_fetch.py`
+- `skill/scripts/insane_router.py`
 
 
 - `skill/SKILL.md`
@@ -48,6 +54,10 @@ This repository was created with strong inspiration from:
 
 It does not aim to be a verbatim mirror of the original project.
 Instead, it adapts the blocked-site retrieval strategy, fallback structure, and platform-specific handling approach for Hermes Agent workflows.
+
+## Router
+
+- `skill/scripts/insane_router.py` classifies URL/handle/query input and suggests the first extraction path to try.
 
 ## Ready-to-use templates
 
