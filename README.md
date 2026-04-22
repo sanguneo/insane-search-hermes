@@ -63,6 +63,10 @@ Instead, it adapts the blocked-site retrieval strategy, fallback structure, and 
 
 - See `skill/references/command-templates.md` for copy-paste command templates.
 
+## Publish readiness
+
+- See `skill/references/publish-checklist.md` for the final pre-publish checklist.
+
 ## License
 
 - MIT License

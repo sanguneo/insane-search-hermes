@@ -2,8 +2,8 @@
 """Automatic best-effort router for insane-search-hermes.
 
 Classifies input and tries increasingly stronger methods until one succeeds.
-Outputs JSON containing the executed attempts, heuristic success judgement,
-and the best result found so far.
+Outputs structured JSON with a compact summary, executed attempts, and a ready-to-use
+browser escalation plan when script-level retrieval is weak or blocked.
 """
 import argparse
 import json
@@ -65,8 +65,7 @@ def evaluate_attempt(label, result):
     summary = None
 
     if exit_code != 0:
-        reason = 'command failed'
-        return {'label': label, 'success': False, 'reason': reason, 'summary': summary, 'result': result}
+        return {'label': label, 'success': False, 'reason': 'command failed', 'summary': None, 'result': result}
 
     if parsed is not None:
         if label == 'fetch_with_cffi':
@@ -131,10 +130,11 @@ def candidate_steps_for_url(url: str, host: str):
     py = sys.executable
     steps = []
     if 'x.com' in host or 'twitter.com' in host:
-        steps.append(('twitter_oembed', [py, str(SCRIPT_DIR / 'twitter_oembed.py'), url]))
-        steps.append(('jina_fetch', [py, str(SCRIPT_DIR / 'jina_fetch.py'), url]))
-        steps.append(('wayback_lookup', [py, str(SCRIPT_DIR / 'wayback_lookup.py'), url]))
-        return steps
+        return [
+            ('twitter_oembed', [py, str(SCRIPT_DIR / 'twitter_oembed.py'), url]),
+            ('jina_fetch', [py, str(SCRIPT_DIR / 'jina_fetch.py'), url]),
+            ('wayback_lookup', [py, str(SCRIPT_DIR / 'wayback_lookup.py'), url]),
+        ]
     if 'reddit.com' in host:
         steps.append(('reddit_json', [py, str(SCRIPT_DIR / 'reddit_json.py'), url]))
     elif 'youtube.com' in host or 'youtu.be' in host:
@@ -142,7 +142,6 @@ def candidate_steps_for_url(url: str, host: str):
     elif 'news.ycombinator.com' in host or 'hn.algolia.com' in host:
         steps.append(('hn_fetch', [py, str(SCRIPT_DIR / 'hn_fetch.py'), '--limit', '10']))
     elif 'bsky.app' in host or 'bsky.social' in host:
-        # URL parsing for individual posts is still weak; try Jina then metadata.
         steps.append(('jina_fetch', [py, str(SCRIPT_DIR / 'jina_fetch.py'), url]))
     elif 'naver.com' in host:
         steps.append(('fetch_with_cffi', [py, str(SCRIPT_DIR / 'fetch_with_cffi.py'), url]))
@@ -209,6 +208,45 @@ def execute_query(query: str, stop_on_success: bool):
     return attempts, best
 
 
+def browser_escalation_plan(classification, original_input, best):
+    url = None
+    if classification['kind'] == 'url':
+        url = original_input
+    elif best and best.get('result', {}).get('parsed'):
+        parsed = best['result']['parsed']
+        url = parsed.get('url') or parsed.get('author_url') or parsed.get('html')
+    target_url = url or '<resolved-url>'
+    return {
+        'goal': 'Use Hermes browser/browser_cdp when script-level retrieval is weak, blocked, or incomplete.',
+        'steps': [
+            f"browser_navigate(url='{target_url}')",
+            "browser_snapshot(full=true)",
+            "browser_console(expression='document.body.innerText.slice(0,4000)')",
+            "browser_console(expression='[...document.querySelectorAll(\"script[type=\\\"application/ld+json\\\"]\")].map(x=>x.textContent)')",
+            "If SPA/empty shell persists: use browser_cdp Target.getTargets then Runtime.evaluate on the active tab.",
+        ],
+        'when_to_use': [
+            'CAPTCHA / JS challenge markers are visible',
+            'Only metadata was found but article body is missing',
+            'Login wall / paywall status must be confirmed visually',
+            'Need hidden XHR/fetch API discovery from a live rendered page',
+        ],
+    }
+
+
+def compact_attempts(attempts):
+    out = []
+    for a in attempts:
+        out.append({
+            'label': a['label'],
+            'success': a['success'],
+            'reason': a['reason'],
+            'summary': a['summary'],
+            'command': a['result']['command'],
+        })
+    return out
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('input')
@@ -246,13 +284,20 @@ def main():
     else:
         attempts, best = execute_query(args.input, stop_on_success)
 
+    need_browser = not (best and best.get('success')) or (best and best.get('label') == 'extract_metadata')
     output = {
         'classification': cls,
         'stop_on_success': stop_on_success,
         'attempt_count': len(attempts),
+        'status': 'success' if best and best.get('success') else 'needs_escalation',
+        'best_label': best.get('label') if best else None,
+        'best_reason': best.get('reason') if best else None,
+        'best_summary': best.get('summary') if best else None,
+        'compact_attempts': compact_attempts(attempts),
         'best': best,
         'attempts': attempts,
-        'next_hint': 'If all attempts are weak or blocked, escalate to Hermes browser/browser_cdp using the URL you discovered.',
+        'browser_escalation_plan': browser_escalation_plan(cls, args.input, best) if need_browser else None,
+        'next_hint': 'If the best result is still weak or partial, run the browser escalation plan next.',
     }
     print(json.dumps(output, ensure_ascii=False, indent=2))
 

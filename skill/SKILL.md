@@ -14,7 +14,7 @@ description: >
   github search, arxiv papers, threads, mastodon, medium, substack, stackoverflow,
   naver blog, dcinside, fmkorea, coupang, linkedin, yozm, wishket.
   Do NOT trigger for simple web searches that web_search can handle directly.
-version: 1.4.0
+version: 1.5.0
 metadata:
   hermes:
     tags: [research, web, scraping, blocked-sites, jina, curl_cffi, browser, naver, reddit, twitter, rss]
@@ -197,7 +197,11 @@ yt-dlp --write-sub --write-auto-sub --sub-lang "en,ko" --skip-download -o "/tmp/
 
 바로 복붙해서 쓸 템플릿은 [command-templates.md](references/command-templates.md)를 본다.
 
+## 배포 전 점검
+
+skills hub 배포 전 마지막 점검은 [publish-checklist.md](references/publish-checklist.md)를 본다.
+
 
 ## Router 설계
 
-`insane_router.py`는 입력(URL/핸들/키워드)을 분류한 뒤 실제 스크립트를 자동 실행하고, 첫 성공까지 단계적으로 승격한다. `--plan-only`로 계획만 볼 수 있고, `--run-all`로 모든 후보를 순차 실행할 수 있다. 브라우저 단계는 외부 스크립트 안에서 직접 제어하지 않고, 최종 힌트로 Hermes browser/browser_cdp 에스컬레이션을 안내한다.
+`insane_router.py`는 입력(URL/핸들/키워드)을 분류한 뒤 실제 스크립트를 자동 실행하고, 첫 성공까지 단계적으로 승격한다. `--plan-only`로 계획만 볼 수 있고, `--run-all`로 모든 후보를 순차 실행할 수 있다. 브라우저 단계는 외부 스크립트 안에서 직접 제어하지 않고, JSON 출력에 browser escalation plan을 포함해 Hermes browser/browser_cdp 에스컬레이션을 바로 이어서 쓸 수 있게 한다.
