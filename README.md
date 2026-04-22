@@ -14,6 +14,14 @@ This repository reorganizes the original ideas around Hermes-native tools such a
 
 ## Contents
 
+Runnable helper scripts are also included.
+- `skill/scripts/fetch_with_cffi.py`
+- `skill/scripts/extract_metadata.py`
+- `skill/scripts/naver_search.py`
+- `skill/scripts/twitter_oembed.py`
+- `skill/scripts/rss_discover.py`
+
+
 - `skill/SKILL.md`
 - `skill/references/fallback.md`
 - `skill/references/special-endpoints.md`
@@ -40,6 +48,10 @@ This repository was created with strong inspiration from:
 
 It does not aim to be a verbatim mirror of the original project.
 Instead, it adapts the blocked-site retrieval strategy, fallback structure, and platform-specific handling approach for Hermes Agent workflows.
+
+## Ready-to-use templates
+
+- See `skill/references/command-templates.md` for copy-paste command templates.
 
 ## License
 

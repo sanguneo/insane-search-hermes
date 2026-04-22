@@ -14,7 +14,7 @@ description: >
   github search, arxiv papers, threads, mastodon, medium, substack, stackoverflow,
   naver blog, dcinside, fmkorea, coupang, linkedin, yozm, wishket.
   Do NOT trigger for simple web searches that web_search can handle directly.
-version: 1.1.0
+version: 1.2.0
 metadata:
   hermes:
     tags: [research, web, scraping, blocked-sites, jina, curl_cffi, browser, naver, reddit, twitter, rss]
@@ -175,3 +175,18 @@ yt-dlp --write-sub --write-auto-sub --sub-lang "en,ko" --skip-download -o "/tmp/
 - [metadata.md](references/metadata.md)
 - [browser-escalation.md](references/browser-escalation.md)
 - [terminal-http.md](references/terminal-http.md)
+
+
+## 실행 스크립트
+
+다음 스크립트는 실전 재사용을 위한 실행형 보조 도구다.
+
+- `scripts/fetch_with_cffi.py` — curl_cffi 자동설치 후 TLS impersonation 시도
+- `scripts/extract_metadata.py` — OGP/JSON-LD/Next.js payload 추출
+- `scripts/naver_search.py` — 네이버 검색 결과 HTML 확보
+- `scripts/twitter_oembed.py` — X 개별 포스트 oEmbed 추출
+- `scripts/rss_discover.py` — RSS/Atom 후보 자동 탐색 및 파싱
+
+## 명령 템플릿
+
+바로 복붙해서 쓸 템플릿은 [command-templates.md](references/command-templates.md)를 본다.
