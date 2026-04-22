@@ -40,9 +40,15 @@ Runnable helper scripts are also included.
 
 ## Install
 
+### Auto
 ```bash
-mkdir -p ~/.hermes/skills/research/insane-search-hermes
-cp -R skill/* ~/.hermes/skills/research/insane-search-hermes/
+hermes skills install sanguneo/insane-search-hermes:skill/SKILL.md
+```
+
+### Manual
+```bash
+git clone https://github.com/sanguneo/insane-search-hermes.git
+cp -R ./insane-search-hermes/skill ~/.hermes/skills/research/insane-search-hermes/
 ```
 
 ## Attribution
