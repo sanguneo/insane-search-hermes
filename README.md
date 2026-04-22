@@ -57,7 +57,7 @@ Instead, it adapts the blocked-site retrieval strategy, fallback structure, and 
 
 ## Router
 
-- `skill/scripts/insane_router.py` classifies URL/handle/query input and suggests the first extraction path to try.
+- `skill/scripts/insane_router.py` classifies URL/handle/query input and automatically executes the first extraction path, escalating until success. Use `--plan-only` for dry-run output and `--run-all` to execute every candidate.
 
 ## Ready-to-use templates
 

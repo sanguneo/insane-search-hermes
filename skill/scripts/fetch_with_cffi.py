@@ -2,16 +2,32 @@
 """Fetch a URL with curl_cffi impersonation, auto-installing curl_cffi if needed."""
 import argparse
 import json
+import os
 import subprocess
 import sys
+from pathlib import Path
 from urllib.parse import urlparse
 
 
 def ensure_curl_cffi():
     try:
         from curl_cffi import requests  # noqa: F401
+        return
     except Exception:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'curl_cffi'])
+        pass
+
+    if os.environ.get('INSANE_CURL_CFFI_BOOTSTRAPPED') == '1':
+        raise RuntimeError('curl_cffi bootstrap already attempted and still unavailable')
+
+    venv_dir = Path('/tmp/insane-search-hermes-venvs/curl_cffi')
+    venv_python = venv_dir / 'bin' / 'python'
+    if not venv_python.exists():
+        subprocess.check_call([sys.executable, '-m', 'venv', str(venv_dir)])
+        subprocess.check_call([str(venv_python), '-m', 'pip', 'install', '-q', 'curl_cffi'])
+
+    env = dict(os.environ)
+    env['INSANE_CURL_CFFI_BOOTSTRAPPED'] = '1'
+    raise SystemExit(subprocess.call([str(venv_python), __file__, *sys.argv[1:]], env=env))
 
 
 def main():
